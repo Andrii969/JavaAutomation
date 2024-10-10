@@ -1,0 +1,10 @@
+21:25:53.636 [main] INFO  api.test.StoreTests - Sending GET request to fetch inventory.
+21:25:54.261 [main] INFO  api.test.StoreTests - Placing an order with valid data
+21:25:54.951 [main] INFO  api.test.StoreTests - Fetching an existing order with ID: 1177232287
+21:25:55.637 [main] INFO  api.test.StoreTests - Deleting the order with ID: 1177232287
+21:25:56.291 [main] INFO  api.test.StoreTests - Fetching an already deleted order with ID: 1177232287
+21:25:56.964 [main] INFO  api.test.StoreTests - Trying to delete an already deleted order with ID: 1177232287
+21:25:57.616 [main] INFO  api.test.StoreTests - Placing an order with an invalid ID: 'invalid-id'
+21:25:58.288 [main] INFO  api.test.StoreTests - Placing an order with invalid quantity: 'invalid-quantity'
+21:25:58.944 [main] INFO  api.test.StoreTests - Placing an order with invalid ship date: 'invalid-shipDate'
+21:25:59.641 [main] INFO  api.test.StoreTests - Placing an order with invalid complete field: 'invalid-complete'

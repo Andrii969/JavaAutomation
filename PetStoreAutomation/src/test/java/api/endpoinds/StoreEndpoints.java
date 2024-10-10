@@ -13,7 +13,7 @@ public class StoreEndpoints {
         Response response =
         given()
         .when()
-            .get(Routes.GET_STORE_INVENTORY_URL);
+                .get(Routes.GET_STORE_INVENTORY_URL);
 
         return response;
     }
@@ -32,12 +32,12 @@ public class StoreEndpoints {
 
     public static Response placeOrder(Map<String, Object> payload) {
         Response response =
-                given()
-                        .contentType("application/json")
-                        .accept("application/json")
-                        .body(payload)
-                        .when()
-                        .post(Routes.POST_STORE_ORDER_URL);
+        given()
+                .contentType("application/json")
+                .accept("application/json")
+                .body(payload)
+        .when()
+                .post(Routes.POST_STORE_ORDER_URL);
 
         return response;
     }
