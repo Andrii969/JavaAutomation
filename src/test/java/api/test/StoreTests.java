@@ -5,8 +5,6 @@ import api.payload.Order;
 import com.github.javafaker.Faker;
 import io.restassured.module.jsv.JsonSchemaValidator;
 import io.restassured.response.Response;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -23,8 +21,6 @@ public class StoreTests {
     Faker faker;
     Order orderPayload;
 
-    public Logger logger;
-
     @BeforeClass
     public void setup() {
         faker = new Faker();
@@ -38,13 +34,10 @@ public class StoreTests {
         String formattedDate = shipDate.format(formatter);
 
         orderPayload.setShipDate(formattedDate);
-
-        logger = LogManager.getLogger(this.getClass()); // logs
     }
 
     @Test(priority = 1)
     public void testGetInventory() {
-        logger.info("Sending GET request to fetch inventory.");
         Response response = StoreEndpoints.getInventory();
 
         response
@@ -54,7 +47,6 @@ public class StoreTests {
 
     @Test(priority = 2)
     public void testPlaceOrderWithValidData() {
-        logger.info("Placing an order with valid data");
         Response response = StoreEndpoints.placeOrder(this.orderPayload);
 
         response
@@ -75,7 +67,6 @@ public class StoreTests {
 
     @Test(priority = 3)
     public void testGetExistingOrder() {
-        logger.info("Fetching an existing order with ID: {}", orderPayload.getId());
         Response response = StoreEndpoints.getOrder(this.orderPayload.getId());
 
         response
@@ -97,7 +88,6 @@ public class StoreTests {
 
     @Test(priority = 4)
     public void testDeleteExistingOrder() {
-        logger.info("Deleting the order with ID: {}", orderPayload.getId());
         Response response = StoreEndpoints.deleteOrder(this.orderPayload.getId());
 
         response
@@ -114,7 +104,6 @@ public class StoreTests {
         assert responseBody.containsKey("message") : "Response should contain 'message'";
         assert responseBody.keySet().equals(Set.of("code", "type", "message")) : "Unexpected fields found in response";
 
-        logger.info("Fetching an already deleted order with ID: {}", orderPayload.getId());
         Response testOrderDeleted = StoreEndpoints.getOrder(this.orderPayload.getId());
 
         testOrderDeleted
@@ -127,7 +116,6 @@ public class StoreTests {
 
     @Test(priority = 5)
     public void testDeleteOrderAfterItIsDeleted() {
-        logger.info("Trying to delete an already deleted order with ID: {}", orderPayload.getId());
         Response response = StoreEndpoints.deleteOrder(this.orderPayload.getId());
 
         response
@@ -144,7 +132,6 @@ public class StoreTests {
 
     @Test(priority = 6)
     public void testPlaceOrderWithInvalidIdField() {
-        logger.info("Placing an order with an invalid ID: 'invalid-id'");
         Map<String, Object> invalidOrderPayload = Map.of(
                 "id", "invalid-id",
                 "petId", orderPayload.getPetId(),
@@ -170,7 +157,6 @@ public class StoreTests {
 
     @Test(priority = 7)
     public void testPlaceOrderWithInvalidQuantityField() {
-        logger.info("Placing an order with invalid quantity: 'invalid-quantity'");
         Map<String, Object> invalidOrderPayload = Map.of(
                 "id", orderPayload.getId(),
                 "petId", orderPayload.getPetId(),
@@ -196,7 +182,6 @@ public class StoreTests {
 
     @Test(priority = 8)
     public void testPlaceOrderWithInvalidShipDateField() {
-        logger.info("Placing an order with invalid ship date: 'invalid-shipDate'");
         Map<String, Object> invalidOrderPayload = Map.of(
                 "id", orderPayload.getId(),
                 "petId", orderPayload.getPetId(),
@@ -222,7 +207,6 @@ public class StoreTests {
 
     @Test(priority = 9)
     public void testPlaceOrderWithInvalidCompleteField() {
-        logger.info("Placing an order with invalid complete field: 'invalid-complete'");
         Map<String, Object> invalidOrderPayload = Map.of(
                 "id", orderPayload.getId(),
                 "petId", orderPayload.getPetId(),
