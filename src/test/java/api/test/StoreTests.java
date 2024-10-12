@@ -1,6 +1,6 @@
 package api.test;
 
-import api.endpoinds.StoreEndpoints;
+import api.endpoinds.StoreService;
 import api.payload.Order;
 import com.github.javafaker.Faker;
 import io.restassured.module.jsv.JsonSchemaValidator;
@@ -16,29 +16,30 @@ import java.util.Set;
 
 import static org.hamcrest.Matchers.equalTo;
 
-public class StoreTests {
+public class StoreTests extends BaseTest {
 
-    Faker faker;
     Order orderPayload;
 
     @BeforeClass
     public void setup() {
-        faker = new Faker();
         orderPayload = new Order();
 
-        orderPayload.setId(faker.idNumber().hashCode());
-        orderPayload.setQuantity(faker.number().numberBetween(1, 10));
+        orderPayload.setId(FAKER.idNumber().hashCode());
+        orderPayload.setPetId(33497253);
+        orderPayload.setQuantity(FAKER.number().numberBetween(1, 10));
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
         OffsetDateTime shipDate = OffsetDateTime.now(ZoneOffset.UTC);
         String formattedDate = shipDate.format(formatter);
 
         orderPayload.setShipDate(formattedDate);
+        orderPayload.setStatus("placed");
+        orderPayload.setComplete(true);
     }
 
     @Test(priority = 1)
     public void testGetInventory() {
-        Response response = StoreEndpoints.getInventory();
+        Response response = StoreService.getInventory();
 
         response
         .then().log().all()
@@ -47,7 +48,7 @@ public class StoreTests {
 
     @Test(priority = 2)
     public void testPlaceOrderWithValidData() {
-        Response response = StoreEndpoints.placeOrder(this.orderPayload);
+        Response response = StoreService.placeOrder(this.orderPayload);
 
         response
         .then().log().all()
@@ -67,7 +68,7 @@ public class StoreTests {
 
     @Test(priority = 3)
     public void testGetExistingOrder() {
-        Response response = StoreEndpoints.getOrder(this.orderPayload.getId());
+        Response response = StoreService.getOrder(this.orderPayload.getId());
 
         response
         .then().log().all()
@@ -88,7 +89,7 @@ public class StoreTests {
 
     @Test(priority = 4)
     public void testDeleteExistingOrder() {
-        Response response = StoreEndpoints.deleteOrder(this.orderPayload.getId());
+        Response response = StoreService.deleteOrder(this.orderPayload.getId());
 
         response
         .then().log().all()
@@ -104,7 +105,7 @@ public class StoreTests {
         assert responseBody.containsKey("message") : "Response should contain 'message'";
         assert responseBody.keySet().equals(Set.of("code", "type", "message")) : "Unexpected fields found in response";
 
-        Response testOrderDeleted = StoreEndpoints.getOrder(this.orderPayload.getId());
+        Response testOrderDeleted = StoreService.getOrder(this.orderPayload.getId());
 
         testOrderDeleted
         .then().log().all()
@@ -116,7 +117,7 @@ public class StoreTests {
 
     @Test(priority = 5)
     public void testDeleteOrderAfterItIsDeleted() {
-        Response response = StoreEndpoints.deleteOrder(this.orderPayload.getId());
+        Response response = StoreService.deleteOrder(this.orderPayload.getId());
 
         response
         .then().log().all()
@@ -141,7 +142,7 @@ public class StoreTests {
                 "complete", orderPayload.isComplete()
         );
 
-        Response response = StoreEndpoints.placeOrder(invalidOrderPayload);
+        Response response = StoreService.placeOrder(invalidOrderPayload);
 
         response
         .then().log().all()
@@ -166,7 +167,7 @@ public class StoreTests {
                 "complete", orderPayload.isComplete()
         );
 
-        Response response = StoreEndpoints.placeOrder(invalidOrderPayload);
+        Response response = StoreService.placeOrder(invalidOrderPayload);
 
         response
         .then().log().all()
@@ -191,7 +192,7 @@ public class StoreTests {
                 "complete", orderPayload.isComplete()
         );
 
-        Response response = StoreEndpoints.placeOrder(invalidOrderPayload);
+        Response response = StoreService.placeOrder(invalidOrderPayload);
 
         response
         .then().log().all()
@@ -216,7 +217,7 @@ public class StoreTests {
                 "complete", "invalid-complete"
         );
 
-        Response response = StoreEndpoints.placeOrder(invalidOrderPayload);
+        Response response = StoreService.placeOrder(invalidOrderPayload);
 
         response
         .then().log().all()

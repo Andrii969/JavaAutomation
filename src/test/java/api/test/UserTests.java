@@ -1,6 +1,6 @@
 package api.test;
 
-import api.endpoinds.UserEndpoints;
+import api.endpoinds.UserService;
 import api.payload.User;
 import com.github.javafaker.Faker;
 import io.restassured.module.jsv.JsonSchemaValidator;
@@ -17,27 +17,13 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 
 
-public class UserTests {
-
-    Faker faker;
-    User userPayload;
-
-    @BeforeClass
-    public void setupData() {
-        faker = new Faker();
-        userPayload = new User();
-        userPayload.setId(faker.idNumber().hashCode());
-        userPayload.setUsername(faker.name().username());
-        userPayload.setFirstName(faker.name().firstName());
-        userPayload.setLastName(faker.name().lastName());
-        userPayload.setEmail(faker.internet().safeEmailAddress());
-        userPayload.setPassword(faker.internet().password(5,10));
-        userPayload.setPhone(faker.phoneNumber().cellPhone());
-    }
+public class UserTests extends BaseTest {
+    final User userPayload = new User();
+    final UserService userService = new UserService();
 
     @Test(priority = 1)
     public void testCreateUser() {
-        Response response = UserEndpoints.createUser(this.userPayload);
+        Response response = userService.createUser(userService.getValidModel());
 
         response
         .then().log().all()
@@ -56,7 +42,7 @@ public class UserTests {
 
     @Test(priority = 2)
     public void testGetUser() {
-        Response response = UserEndpoints.getUser(this.userPayload.getUsername());
+        Response response = userService.getUser(this.userPayload.getUsername());
 
         response
         .then().log().all()
@@ -81,14 +67,14 @@ public class UserTests {
     public void testUpdateUser() {
 
         //update data
-        userPayload.setUsername(faker.name().username());
-        userPayload.setFirstName(faker.name().firstName());
-        userPayload.setLastName(faker.name().lastName());
-        userPayload.setEmail(faker.internet().safeEmailAddress());
-        userPayload.setPassword(faker.internet().password(5,10));
-        userPayload.setPhone(faker.phoneNumber().cellPhone());
+        userPayload.setUsername(FAKER.name().username());
+        userPayload.setFirstName(FAKER.name().firstName());
+        userPayload.setLastName(FAKER.name().lastName());
+        userPayload.setEmail(FAKER.internet().safeEmailAddress());
+        userPayload.setPassword(FAKER.internet().password(5,10));
+        userPayload.setPhone(FAKER.phoneNumber().cellPhone());
 
-        Response response = UserEndpoints.updateUser(this.userPayload.getUsername(), this.userPayload);
+        Response response = userService.updateUser(this.userPayload.getUsername(), this.userPayload);
 
         response
         .then().log().all()
@@ -110,7 +96,7 @@ public class UserTests {
 
     @Test(priority = 4)
     public void testDeleteUser() {
-        Response response = UserEndpoints.deleteUser(this.userPayload.getUsername());
+        Response response = userService.deleteUser(this.userPayload.getUsername());
 
         response
         .then().log().all()
@@ -129,7 +115,7 @@ public class UserTests {
         Assert.assertEquals(response.getStatusCode(), 200, "Expected status code to be 200"); // OR
 
         // checking data after user deleted
-        Response testUserDeleted = UserEndpoints.getUser(this.userPayload.getUsername());
+        Response testUserDeleted = userService.getUser(this.userPayload.getUsername());
         testUserDeleted
         .then().log().all()
         .statusCode(404)
