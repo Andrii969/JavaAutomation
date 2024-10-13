@@ -1,133 +1,86 @@
 package api.test;
 
-import api.endpoinds.UserService;
+import api.endpoints.UserService;
 import api.payload.User;
-import com.github.javafaker.Faker;
-import io.restassured.module.jsv.JsonSchemaValidator;
 import io.restassured.response.Response;
-import org.json.JSONObject;
-import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
+import org.apache.http.HttpStatus;
 import org.testng.annotations.Test;
-
-import java.util.Map;
-import java.util.Set;
-
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.instanceOf;
-
+import static org.testng.Assert.assertEquals;
 
 public class UserTests extends BaseTest {
-    final User userPayload = new User();
+    private static final String USER_SCHEMA = "SchemaForPostPutDeleteUser.json";
+    private static final String GET_USER_SCHEMA = "SchemaForGetUser.json";
+
     final UserService userService = new UserService();
 
-    @Test(priority = 1)
+    private void cleanupUser(Object username) {
+        userService.deleteUser(username);
+    }
+
+    @Test
     public void testCreateUser() {
-        Response response = userService.createUser(userService.getValidModel());
+        User userPayload = userService.getValidModel();
+        Response response = userService.createUser(userPayload);
 
-        response
-        .then().log().all()
-        .statusCode(200)
-        .body("code", equalTo(200))
-        .body("type", equalTo("unknown"))
-        .body("message", equalTo(String.valueOf(this.userPayload.getId())))
-        .assertThat().body(JsonSchemaValidator.matchesJsonSchemaInClasspath("SchemaForPostPutDeleteUser.json"));
+        validateStatusCode(response, HttpStatus.SC_OK);
+        validateSchema(response, USER_SCHEMA);
 
-        Map<String, Object> responseBody = response.jsonPath().getMap("$"); // the $ symbol represents the root element of the JSON structure
-        assert responseBody.containsKey("code") : "Response should contain 'code'";
-        assert responseBody.containsKey("type") : "Response should contain 'type'";
-        assert responseBody.containsKey("message") : "Response should contain 'message'";
-        assert responseBody.keySet().equals(Set.of("code", "type", "message")) : "Unexpected fields found in response";
+        cleanupUser(userPayload.getUsername());
     }
 
-    @Test(priority = 2)
+    @Test
     public void testGetUser() {
-        Response response = userService.getUser(this.userPayload.getUsername());
+        User userPayload = userService.getValidModel();
+        userService.createUser(userPayload);
 
-        response
-        .then().log().all()
-        .statusCode(200)
-        .assertThat().body(JsonSchemaValidator.matchesJsonSchemaInClasspath("SchemaForGetUser.json"));
+        Response response = userService.getUser(userPayload.getUsername());
 
-        JSONObject jsonObject = new JSONObject(response.asString());
-        Assert.assertEquals(jsonObject.getInt("id"), this.userPayload.getId());
-        Assert.assertEquals(jsonObject.getString("username"), this.userPayload.getUsername());
-        Assert.assertEquals(jsonObject.getString("firstName"), this.userPayload.getFirstName());
-        Assert.assertEquals(jsonObject.getString("lastName"), this.userPayload.getLastName());
-        Assert.assertEquals(jsonObject.getString("email"), this.userPayload.getEmail());
-        Assert.assertEquals(jsonObject.getString("password"), this.userPayload.getPassword());
-        Assert.assertEquals(jsonObject.getString("phone"), this.userPayload.getPhone());
-        Assert.assertEquals(jsonObject.getInt("userStatus"), this.userPayload.getUserStatus());
+        validateStatusCode(response, HttpStatus.SC_OK);
+        validateSchema(response, GET_USER_SCHEMA);
 
-        assert response.statusCode() == 200 : "Expected status code to be 200"; // OR
-        Assert.assertEquals(response.getStatusCode(), 200, "Expected status code to be 200"); // OR
+        User responseUser = userService.getUserFromResponse(response);
+        assertEquals(responseUser, userPayload, "The retrieved user should match the created user");
+
+        cleanupUser(userPayload.getUsername());
     }
 
-    @Test(priority = 3)
+    @Test
     public void testUpdateUser() {
+        User userPayload = userService.getValidModel();
+        userService.createUser(userPayload);
 
-        //update data
-        userPayload.setUsername(FAKER.name().username());
+        userPayload.setId(FAKER.idNumber().hashCode());
         userPayload.setFirstName(FAKER.name().firstName());
         userPayload.setLastName(FAKER.name().lastName());
         userPayload.setEmail(FAKER.internet().safeEmailAddress());
-        userPayload.setPassword(FAKER.internet().password(5,10));
+        userPayload.setPassword(FAKER.internet().password(5, 10));
         userPayload.setPhone(FAKER.phoneNumber().cellPhone());
+        userPayload.setUserStatus(1);
 
-        Response response = userService.updateUser(this.userPayload.getUsername(), this.userPayload);
+        Response response = userService.updateUser(userPayload.getUsername(), userPayload);
 
-        response
-        .then().log().all()
-        .statusCode(200)
-        .body("code", equalTo(200))
-        .body("type", equalTo("unknown"))
-        .body("message", instanceOf(String.class))
-        .assertThat().body(JsonSchemaValidator.matchesJsonSchemaInClasspath("SchemaForPostPutDeleteUser.json"));
+        validateStatusCode(response, HttpStatus.SC_OK);
+        validateSchema(response, USER_SCHEMA);
 
-        Map<String, Object> responseBody = response.jsonPath().getMap("$"); // the $ symbol represents the root element of the JSON structure
-        assert responseBody.containsKey("code") : "Response should contain 'code'";
-        assert responseBody.containsKey("type") : "Response should contain 'type'";
-        assert responseBody.containsKey("message") : "Response should contain 'message'";
-        assert responseBody.keySet().equals(Set.of("code", "type", "message")) : "Unexpected fields found in response";
+        Response getUserResponse = userService.getUser(userPayload.getUsername());
+        User fetchedUser = userService.getUserFromResponse(getUserResponse);
+        assertEquals(fetchedUser, userPayload, "The fetched user should match the updated user");
 
-        // checking data after update
-        testGetUser();
+        cleanupUser(userPayload.getUsername());
     }
 
-    @Test(priority = 4)
+    @Test
     public void testDeleteUser() {
-        Response response = userService.deleteUser(this.userPayload.getUsername());
+        User userPayload = userService.getValidModel();
+        userService.createUser(userPayload);
+        Response response = userService.deleteUser(userPayload.getUsername());
 
-        response
-        .then().log().all()
-        .statusCode(200)
-        .body("code", equalTo(200))
-        .body("type", equalTo("unknown"))
-        .body("message", equalTo(this.userPayload.getUsername()));
+        validateStatusCode(response, HttpStatus.SC_OK);
+        validateSchema(response, USER_SCHEMA);
 
-        Map<String, Object> responseBody = response.jsonPath().getMap("$"); // the $ symbol represents the root element of the JSON structure
-        assert responseBody.containsKey("code") : "Response should contain 'code'";
-        assert responseBody.containsKey("type") : "Response should contain 'type'";
-        assert responseBody.containsKey("message") : "Response should contain 'message'";
-        assert responseBody.keySet().equals(Set.of("code", "type", "message")) : "Unexpected fields found in response";
+        Response getUserResponse = userService.getUser(userPayload.getUsername());
 
-        assert response.statusCode() == 200 : "Expected status code to be 200"; // OR
-        Assert.assertEquals(response.getStatusCode(), 200, "Expected status code to be 200"); // OR
-
-        // checking data after user deleted
-        Response testUserDeleted = userService.getUser(this.userPayload.getUsername());
-        testUserDeleted
-        .then().log().all()
-        .statusCode(404)
-        .body("code", equalTo(1))
-        .body("type", equalTo("error"))
-        .body("message", equalTo("User not found"))
-        .assertThat().body(JsonSchemaValidator.matchesJsonSchemaInClasspath("SchemaForPostPutDeleteUser.json"));
+        validateStatusCode(getUserResponse, HttpStatus.SC_NOT_FOUND);
+        validateSchema(getUserResponse, USER_SCHEMA);
     }
-
-
-
-
-
-
 }

@@ -1,14 +1,19 @@
 package api.test;
 
 import com.github.javafaker.Faker;
-import io.restassured.RestAssured;
-import org.testng.annotations.BeforeTest;
+import io.restassured.module.jsv.JsonSchemaValidator;
+import io.restassured.response.Response;
+
+import static org.testng.Assert.assertEquals;
 
 public class BaseTest {
     public static Faker FAKER = new Faker();
 
-    @BeforeTest
-    public void setApiUrl() {
-        RestAssured.baseURI = "https://petstore.swagger.io/v2";
+    void validateStatusCode(Response response, int expectedStatusCode) {
+        assertEquals(response.getStatusCode(), expectedStatusCode, "Status code did not match");
+    }
+
+    void validateSchema(Response response, String schemaFileName) {
+        response.then().assertThat().body(JsonSchemaValidator.matchesJsonSchemaInClasspath(schemaFileName));
     }
 }

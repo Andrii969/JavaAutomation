@@ -1,42 +1,41 @@
-package api.endpoinds;
+package api.endpoints;
 
 import api.payload.User;
-import com.github.javafaker.Faker;
 import io.restassured.response.Response;
-
-import static api.endpoinds.Endpoints.User.USER;
-import static api.endpoinds.Endpoints.User.USER_NAME;
+import static api.endpoints.Endpoints.User.USER;
+import static api.endpoints.Endpoints.User.USER_NAME;
 import static api.test.BaseTest.FAKER;
-import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
 
 public class UserService extends ApiService {
 
     public Response createUser(User payload) {
         return setUp()
+                .contentType(JSON)
                 .body(payload)
                 .when()
                 .post(USER);
     }
 
-    public Response getUser(String userName) {
-        return given()
-                .pathParam("userName", userName)
+    public Response getUser(Object username) {
+        return setUp()
+                .pathParam("userName", username)
                 .when()
                 .get(USER_NAME);
     }
 
-    public Response updateUser(String userName, User payload) {
+    public Response updateUser(Object username, User payload) {
         return setUp()
-                .pathParam("userName", userName)
+                .pathParam("userName", username)
+                .contentType(JSON)
                 .body(payload)
                 .when()
                 .put(USER_NAME);
     }
 
-    public Response deleteUser(String userName) {
-        return given()
-                .pathParam("userName", userName)
+    public Response deleteUser(Object username) {
+        return setUp()
+                .pathParam("userName", username)
                 .when()
                 .delete(USER_NAME);
     }
@@ -51,5 +50,9 @@ public class UserService extends ApiService {
                 .setPassword(FAKER.internet().password(5, 10))
                 .setPhone(FAKER.phoneNumber().cellPhone())
                 .setUserStatus(0);
+    }
+
+    public User getUserFromResponse(Response response) {
+        return response.as(User.class);
     }
 }

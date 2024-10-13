@@ -1,234 +1,122 @@
 package api.test;
 
-import api.endpoinds.StoreService;
+import api.endpoints.StoreService;
 import api.payload.Order;
-import com.github.javafaker.Faker;
-import io.restassured.module.jsv.JsonSchemaValidator;
 import io.restassured.response.Response;
-import org.testng.annotations.BeforeClass;
+import org.apache.http.HttpStatus;
 import org.testng.annotations.Test;
-
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.Map;
-import java.util.Set;
-
-import static org.hamcrest.Matchers.equalTo;
+import static org.testng.Assert.assertEquals;
 
 public class StoreTests extends BaseTest {
+    private static final String POST_GET_ORDER_SCHEMA = "SchemaForPostGetStore.json";
+    private static final String DELETE_ORDER_OR_ERROR_SCHEMA = "SchemaForDeleteSuccessOrErrorsOrder.json";
 
-    Order orderPayload;
+    StoreService storeService = new StoreService();
 
-    @BeforeClass
-    public void setup() {
-        orderPayload = new Order();
-
-        orderPayload.setId(FAKER.idNumber().hashCode());
-        orderPayload.setPetId(33497253);
-        orderPayload.setQuantity(FAKER.number().numberBetween(1, 10));
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-        OffsetDateTime shipDate = OffsetDateTime.now(ZoneOffset.UTC);
-        String formattedDate = shipDate.format(formatter);
-
-        orderPayload.setShipDate(formattedDate);
-        orderPayload.setStatus("placed");
-        orderPayload.setComplete(true);
+    private void cleanupOrder(Object orderId) {
+        storeService.deleteOrder(orderId);
     }
 
-    @Test(priority = 1)
+    @Test
     public void testGetInventory() {
-        Response response = StoreService.getInventory();
-
-        response
-        .then().log().all()
-        .statusCode(200);
+        Response response = storeService.getInventory();
+        validateStatusCode(response, HttpStatus.SC_OK);
     }
 
-    @Test(priority = 2)
+    @Test
     public void testPlaceOrderWithValidData() {
-        Response response = StoreService.placeOrder(this.orderPayload);
+        Order orderPayload = storeService.getValidModel();
+        Response response = storeService.placeOrder(orderPayload);
 
-        response
-        .then().log().all()
-        .statusCode(200)
-        .body("id", equalTo(this.orderPayload.getId()))
-        .body("petId", equalTo(this.orderPayload.getPetId()))
-        .body("quantity", equalTo(this.orderPayload.getQuantity()))
-        .body("shipDate", equalTo(this.orderPayload.getShipDate()))
-        .body("status", equalTo(this.orderPayload.getStatus()))
-        .body("complete", equalTo(this.orderPayload.isComplete()))
-        .assertThat().body(JsonSchemaValidator.matchesJsonSchemaInClasspath("SchemaForPostGetStore.json"));
+        validateStatusCode(response, HttpStatus.SC_OK);
+        validateSchema(response, POST_GET_ORDER_SCHEMA);
 
-        Map<String, Object> responseBody = response.jsonPath().getMap("$"); // the $ symbol represents the root element of the JSON structure
-        assert responseBody.keySet().equals(Set.of("id", "petId", "quantity", "shipDate", "status", "complete"))
-                : "Unexpected fields found in response";
+        Order responseOrder = storeService.getOrderFromResponse(response);
+        assertEquals(responseOrder, orderPayload, "The retrieved order should match the created order");
+
+        cleanupOrder(orderPayload.getId());
     }
 
-    @Test(priority = 3)
+    @Test
     public void testGetExistingOrder() {
-        Response response = StoreService.getOrder(this.orderPayload.getId());
+        Order orderPayload = storeService.getValidModel();
+        storeService.placeOrder(orderPayload);
+        Response response = storeService.getOrder(orderPayload.getId());
 
-        response
-        .then().log().all()
-        .statusCode(200)
-        .body("id", equalTo(this.orderPayload.getId()))
-        .body("petId", equalTo(this.orderPayload.getPetId()))
-        .body("quantity", equalTo(this.orderPayload.getQuantity()))
-        .body("shipDate", equalTo(this.orderPayload.getShipDate()))
-        .body("status", equalTo(this.orderPayload.getStatus()))
-        .body("complete", equalTo(this.orderPayload.isComplete()))
-        .assertThat().body(JsonSchemaValidator.matchesJsonSchemaInClasspath("SchemaForPostGetStore.json"));
+        validateStatusCode(response, HttpStatus.SC_OK);
+        validateSchema(response, POST_GET_ORDER_SCHEMA);
 
+        Order responseOrder = storeService.getOrderFromResponse(response);
+        assertEquals(responseOrder, orderPayload, "The retrieved order should match the created order");
 
-        Map<String, Object> responseBody = response.jsonPath().getMap("$"); // the $ symbol represents the root element of the JSON structure
-        assert responseBody.keySet().equals(Set.of("id", "petId", "quantity", "shipDate", "status", "complete"))
-                : "Unexpected fields found in response";
+        cleanupOrder(orderPayload.getId());
     }
 
-    @Test(priority = 4)
+    @Test
     public void testDeleteExistingOrder() {
-        Response response = StoreService.deleteOrder(this.orderPayload.getId());
+        Order orderPayload = storeService.getValidModel();
+        storeService.placeOrder(orderPayload);
 
-        response
-        .then().log().all()
-        .statusCode(200)
-        .body("code", equalTo(200))
-        .body("type", equalTo("unknown"))
-        .body("message", equalTo(String.valueOf(this.orderPayload.getId())))
-        .assertThat().body(JsonSchemaValidator.matchesJsonSchemaInClasspath("SchemaForDeleteSuccessOrErrorsOrder.json"));
+        Response response = storeService.deleteOrder(orderPayload.getId());
 
-        Map<String, Object> responseBody = response.jsonPath().getMap("$"); // the $ symbol represents the root element of the JSON structure
-        assert responseBody.containsKey("code") : "Response should contain 'code'";
-        assert responseBody.containsKey("type") : "Response should contain 'type'";
-        assert responseBody.containsKey("message") : "Response should contain 'message'";
-        assert responseBody.keySet().equals(Set.of("code", "type", "message")) : "Unexpected fields found in response";
+        validateStatusCode(response, HttpStatus.SC_OK);
+        validateSchema(response, DELETE_ORDER_OR_ERROR_SCHEMA);
 
-        Response testOrderDeleted = StoreService.getOrder(this.orderPayload.getId());
+        Response getOrderResponse = storeService.getOrder(orderPayload.getId());
 
-        testOrderDeleted
-        .then().log().all()
-        .statusCode(404)
-        .body("code", equalTo(1))
-        .body("type", equalTo("error"))
-        .body("message", equalTo("Order not found"));
+        validateStatusCode(getOrderResponse, HttpStatus.SC_NOT_FOUND);
+        validateSchema(getOrderResponse, DELETE_ORDER_OR_ERROR_SCHEMA);
     }
 
-    @Test(priority = 5)
+    @Test
     public void testDeleteOrderAfterItIsDeleted() {
-        Response response = StoreService.deleteOrder(this.orderPayload.getId());
+        Order orderPayload = storeService.getValidModel();
+        storeService.placeOrder(orderPayload);
+        storeService.deleteOrder(orderPayload.getId());
 
-        response
-        .then().log().all()
-        .statusCode(404)
-        .body("code", equalTo(404))
-        .body("type", equalTo("unknown"))
-        .body("message", equalTo("Order Not Found"))
-        .assertThat().body(JsonSchemaValidator.matchesJsonSchemaInClasspath("SchemaForDeleteSuccessOrErrorsOrder.json"));
+        Response response = storeService.deleteOrder(orderPayload.getId());
 
-        Map<String, Object> responseBody = response.jsonPath().getMap("$");
-        assert responseBody.keySet().equals(Set.of("code", "type", "message")) : "Unexpected fields found in response";
+        validateStatusCode(response, HttpStatus.SC_NOT_FOUND);
+        validateSchema(response, DELETE_ORDER_OR_ERROR_SCHEMA);
     }
 
-    @Test(priority = 6)
+    @Test
     public void testPlaceOrderWithInvalidIdField() {
-        Map<String, Object> invalidOrderPayload = Map.of(
-                "id", "invalid-id",
-                "petId", orderPayload.getPetId(),
-                "quantity", orderPayload.getQuantity(),
-                "shipDate", orderPayload.getShipDate(),
-                "status", orderPayload.getStatus(),
-                "complete", orderPayload.isComplete()
-        );
+        Order orderPayload = storeService.getValidModel();
+        orderPayload.setId("invalid-id");
+        Response response = storeService.placeOrder(orderPayload);
 
-        Response response = StoreService.placeOrder(invalidOrderPayload);
-
-        response
-        .then().log().all()
-        .statusCode(500)
-        .body("code", equalTo(500))
-        .body("type", equalTo("unknown"))
-        .body("message", equalTo("something bad happened"))
-        .assertThat().body(JsonSchemaValidator.matchesJsonSchemaInClasspath("SchemaForDeleteSuccessOrErrorsOrder.json"));
-
-        Map<String, Object> responseBody = response.jsonPath().getMap("$");
-        assert responseBody.keySet().equals(Set.of("code", "type", "message")) : "Unexpected fields found in response";
+        validateStatusCode(response, HttpStatus.SC_INTERNAL_SERVER_ERROR);
+        validateSchema(response, DELETE_ORDER_OR_ERROR_SCHEMA);
     }
 
     @Test(priority = 7)
     public void testPlaceOrderWithInvalidQuantityField() {
-        Map<String, Object> invalidOrderPayload = Map.of(
-                "id", orderPayload.getId(),
-                "petId", orderPayload.getPetId(),
-                "quantity", "invalid-quantity",
-                "shipDate", orderPayload.getShipDate(),
-                "status", orderPayload.getStatus(),
-                "complete", orderPayload.isComplete()
-        );
+        Order orderPayload = storeService.getValidModel();
+        orderPayload.setQuantity("invalid-quantity");
+        Response response = storeService.placeOrder(orderPayload);
 
-        Response response = StoreService.placeOrder(invalidOrderPayload);
-
-        response
-        .then().log().all()
-        .statusCode(500)
-        .body("code", equalTo(500))
-        .body("type", equalTo("unknown"))
-        .body("message", equalTo("something bad happened"))
-        .assertThat().body(JsonSchemaValidator.matchesJsonSchemaInClasspath("SchemaForDeleteSuccessOrErrorsOrder.json"));
-
-        Map<String, Object> responseBody = response.jsonPath().getMap("$");
-        assert responseBody.keySet().equals(Set.of("code", "type", "message")) : "Unexpected fields found in response";
+        validateStatusCode(response, HttpStatus.SC_INTERNAL_SERVER_ERROR);
+        validateSchema(response, DELETE_ORDER_OR_ERROR_SCHEMA);
     }
 
-    @Test(priority = 8)
+    @Test
     public void testPlaceOrderWithInvalidShipDateField() {
-        Map<String, Object> invalidOrderPayload = Map.of(
-                "id", orderPayload.getId(),
-                "petId", orderPayload.getPetId(),
-                "quantity", orderPayload.getShipDate(),
-                "shipDate", "invalid-shipDate",
-                "status", orderPayload.getStatus(),
-                "complete", orderPayload.isComplete()
-        );
+        Order orderPayload = storeService.getValidModel();
+        orderPayload.setShipDate("invalid-shipDate");
+        Response response = storeService.placeOrder(orderPayload);
 
-        Response response = StoreService.placeOrder(invalidOrderPayload);
-
-        response
-        .then().log().all()
-        .statusCode(500)
-        .body("code", equalTo(500))
-        .body("type", equalTo("unknown"))
-        .body("message", equalTo("something bad happened"))
-        .assertThat().body(JsonSchemaValidator.matchesJsonSchemaInClasspath("SchemaForDeleteSuccessOrErrorsOrder.json"));
-
-        Map<String, Object> responseBody = response.jsonPath().getMap("$");
-        assert responseBody.keySet().equals(Set.of("code", "type", "message")) : "Unexpected fields found in response";
+        validateStatusCode(response, HttpStatus.SC_INTERNAL_SERVER_ERROR);
+        validateSchema(response, DELETE_ORDER_OR_ERROR_SCHEMA);
     }
 
     @Test(priority = 9)
     public void testPlaceOrderWithInvalidCompleteField() {
-        Map<String, Object> invalidOrderPayload = Map.of(
-                "id", orderPayload.getId(),
-                "petId", orderPayload.getPetId(),
-                "quantity", orderPayload.getShipDate(),
-                "shipDate", orderPayload.getShipDate(),
-                "status", orderPayload.getStatus(),
-                "complete", "invalid-complete"
-        );
+        Order orderPayload = storeService.getValidModel();
+        orderPayload.setComplete("invalid-complete");
+        Response response = storeService.placeOrder(orderPayload);
 
-        Response response = StoreService.placeOrder(invalidOrderPayload);
-
-        response
-        .then().log().all()
-        .statusCode(500)
-        .body("code", equalTo(500))
-        .body("type", equalTo("unknown"))
-        .body("message", equalTo("something bad happened"))
-        .assertThat().body(JsonSchemaValidator.matchesJsonSchemaInClasspath("SchemaForDeleteSuccessOrErrorsOrder.json"));
-
-        Map<String, Object> responseBody = response.jsonPath().getMap("$");
-        assert responseBody.keySet().equals(Set.of("code", "type", "message")) : "Unexpected fields found in response";
+        validateStatusCode(response, HttpStatus.SC_INTERNAL_SERVER_ERROR);
+        validateSchema(response, DELETE_ORDER_OR_ERROR_SCHEMA);
     }
-
 }
